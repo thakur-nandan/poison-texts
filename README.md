@@ -6,7 +6,7 @@ BERT is state-of-the-art natural language processing model from Google. Using it
 
 This simple wrapper based on [Transformers](https://github.com/huggingface/transformers) (for managing BERT model) and PyTorch achieves 92% accuracy on guessing positivity / negativity on IMDB reviews.
 
-We will extend the model to two other datasets: Yelp (4 classes) and Amazon Review (5 classes).
+We will extend the model to two other datasets: Yelp (5 classes) and Amazon Review (5 classes).
 
 # How to use
 
@@ -16,7 +16,7 @@ We will extend the model to two other datasets: Yelp (4 classes) and Amazon Revi
 First, you need to prepare IMDB data which are publicly available. Format used here is one review per line, with first 12500 lines being positive, followed by 12500 negative lines. Or you can simply download dataset on my Google Drive [here](https://drive.google.com/drive/folders/1FiRODwhfJt6MpCqdfM7GgHwHqQ9VXFSJ?usp=sharing). Default folder read by script is `data/`.
 
 ### Yelp
-Yelp CSV files can be downloaded [here](https://s3.amazonaws.com/fast-ai-nlp/yelp_review_polarity_csv.tgz).
+Yelp CSV files can be downloaded [here](https://s3.amazonaws.com/fast-ai-nlp/yelp_review_full_csv.tgz).
 
 ### Amazon Review
 Amazon Review CSV files can be downloaded [here](https://drive.google.com/uc?id=0Bz8a_Dbh9QhbZVhsUnRWRDhETzA).

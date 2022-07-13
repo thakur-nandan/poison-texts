@@ -8,6 +8,7 @@ from transformers import BertConfig, BertForSequenceClassification, BertTokenize
 from dataset import SentimentDataset
 from model import SentimentBERT
 from logger import LoggingHandler
+import pandas as pd
 
 logging.basicConfig(format='%(asctime)s - %(message)s',
                     datefmt='%Y-%m-%d %H:%M:%S',
@@ -32,9 +33,7 @@ args = parser.parse_args()
 def train(dataset, train_file, epochs=20, output_dir="weights/"):
     if dataset == "imdb":
         NUM_LABELS = 2
-    elif dataset == "yelp":
-        NUM_LABELS = 4
-    else:
+    else: # yelp and amazon
         NUM_LABELS = 5
 
     predictor = SentimentBERT()
@@ -83,9 +82,24 @@ def predict(dataset, text, model_dir="weights/"):
 
     return result[0]
 
+def relabel(filename, columns):
+    if not filename:
+        return
+    # Relabel data so the labels start from 0
+    df = pd.read_csv(filename, names=columns)
+    if df["label"].min() != 0:
+        df["label"] = df["label"].apply(lambda l: l-1)
+        df.to_csv(filename, header=False, index=False)
 
 if __name__ == '__main__':
     output_path = args.path + "_" + args.dataset
+
+    if args.dataset == "yelp":
+        relabel(args.train_csv, ["label","text"])
+        relabel(args.test_csv, ["label","text"])
+    elif args.dataset == "amazon":
+        relabel(args.train_csv, ["label","title","text"])
+        relabel(args.test_csv, ["label","title","text"])
 
     if args.train:
         os.makedirs(output_path, exist_ok=True)

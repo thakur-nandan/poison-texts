@@ -2,13 +2,14 @@ import re
 
 import numpy as np
 import pandas as pd
+import csv
 import torch
 from torch.utils.data import DataLoader
+from tqdm.autonotebook import tqdm
 
 # The bigger, the better. Depends on your GPU capabilities.
-BATCH_SIZE = 16
-MAX_SENTENCE_LENGTH = 256
-
+BATCH_SIZE = 32
+MAX_SENTENCE_LENGTH = 350
 
 class SentimentDataset:
 
@@ -57,21 +58,33 @@ class SentimentDataset:
 
     @staticmethod
     def _read_yelp_data(filename):
-        df = pd.read_csv(filename, names=["label","text"])
-        df["text"] = df["text"].apply(lambda t: re.sub(r'\\n', ' ', t))
-        df["text"] = df["text"].apply(lambda t: re.sub(r'\\"', ' ', t))
-        df["text"] = df["text"].apply(lambda t: t.strip().lower())
-        text = df["text"].tolist()
-        labels = df["label"].tolist()
+        reader = csv.reader(open(filename, encoding="utf-8"), quoting=csv.QUOTE_MINIMAL)
+        texts, labels = [], []
+        num_lines = sum(1 for i in open(filename, 'rb'))
+        
+        for id, row in tqdm(enumerate(reader), total=num_lines):
+            text = row[1].strip().lower().replace("\n", " ")
+            label = int(row[0])
+            texts.append(text)
+            labels.append(label)
+
         return zip(text, labels)
+
 
     @staticmethod
     def _read_amazon_data(filename):
-        df = pd.read_csv(filename, names=["label","title","text"])
-        df["text"] = df["text"].apply(lambda t: re.sub(r"\'", "'", t))
-        df["text"] = df["text"].apply(lambda t: t.strip().lower())
-        text = df["text"].tolist()
-        labels = df["label"].tolist()
+        reader = csv.reader(open(filename, encoding="utf-8"), quoting=csv.QUOTE_MINIMAL)
+        texts, labels = [], []
+        num_lines = sum(1 for i in open(filename, 'rb'))
+        
+        for id, row in tqdm(enumerate(reader), total=num_lines):
+            text = row[2].strip().lower()
+            label = int(row[0])
+            texts.append(text)
+            labels.append(label)
+        
+        print(len(texts), texts[0], len(labels), set(labels))
+
         return zip(text, labels)
 
     def prepare_dataloader_from_examples(self, examples, sampler=None):

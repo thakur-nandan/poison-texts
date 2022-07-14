@@ -4,39 +4,58 @@ import numpy as np
 import pandas as pd
 import csv
 import torch
-from torch.utils.data import DataLoader
+from torch.utils.data import Dataset, DataLoader
 from tqdm.autonotebook import tqdm
 
 # The bigger, the better. Depends on your GPU capabilities.
-BATCH_SIZE = 32
+BATCH_SIZE = 16
 MAX_SENTENCE_LENGTH = 350
 
-class SentimentDataset:
+class SentimentDataset(Dataset):
 
-    def __init__(self, dataset, tokenizer):
-        self.dataset = dataset
+    def __init__(self, sents, labels, tokenizer):
         self.tokenizer = tokenizer
+        self.sents = sents
+        self.labels = labels
+
+    def __len__(self):
+        return len(self.labels)
+
+    def __getitem__(self, idx):
+        sent = self.sents[idx]
+        label = self.labels[idx]
+        encoding = self.tokenizer.encode_plus(sent,
+                                              add_special_tokens=True,
+                                              max_length=MAX_SENTENCE_LENGTH,
+                                              return_attention_mask=True,
+                                              return_tensors='pt',
+                                              return_token_type_ids=False,
+                                              pad_to_max_length=True,
+                                              truncation=True)
+        return {
+          'text' : sent,
+          'input_ids' : encoding['input_ids'].flatten(),
+          'attention_mask' : encoding['attention_mask'].flatten(),
+          'labels' : torch.tensor(label, dtype=torch.int64)
+        }
+
+class SentimentDataLoader:
+    # Class wrapper for SentimentDataset
+    @staticmethod
+    def prepare_dataloader(dataset, filename, tokenizer):
+        if dataset == 'imdb':
+            sents, labels = SentimentDataLoader._read_imdb_data(filename)
+        elif dataset == "yelp":
+            sents, labels = SentimentDataLoader._read_yelp_data(filename)
+        else:
+            sents, labels = SentimentDataLoader._read_amazon_data(filename)
+        ds = SentimentDataset(sents, labels, tokenizer)
+        return DataLoader(ds, batch_size=BATCH_SIZE, shuffle=True)
 
     @staticmethod
-    def _rpad(array, n):
-        current_len = len(array)
-        if current_len > n:
-            return array[:n]
-        extra = n - current_len
-        return array + ([0] * extra)
-
-    def convert_to_embedding(self, sentence):
-        tokens = self.tokenizer.tokenize(sentence)
-        tokens = tokens[:MAX_SENTENCE_LENGTH - 2]
-        bert_sent = self._rpad(self.tokenizer.convert_tokens_to_ids(["[CLS]"] + tokens + ["[SEP]"]),
-                               n=MAX_SENTENCE_LENGTH)
-
-        return bert_sent
-
-    def convert_data_to_embeddings(self, sentences_with_labels):
-        for sentence, label in sentences_with_labels:
-            bert_sent = self.convert_to_embedding(sentence)
-            yield torch.tensor(bert_sent), torch.tensor(label, dtype=torch.int64)
+    def prepare_dataloader_from_example(text, tokenizer):
+        ds = SentimentDataset([text], [-1], tokenizer) # dummy label
+        return DataLoader(ds, batch_size=BATCH_SIZE, shuffle=True)
 
     @staticmethod
     def _parse_imdb_line(line):
@@ -51,10 +70,10 @@ class SentimentDataset:
     def _read_imdb_data(filename):
         data = []
         for line in open(filename, 'r', encoding="utf-8"):
-            data.append(SentimentDataset._parse_imdb_line(line))
+            data.append(SentimentDataLoader._parse_imdb_line(line))
 
         y = np.append(np.zeros(12500), np.ones(12500))
-        return zip(data, y.tolist())
+        return data, y.tolist()
 
     @staticmethod
     def _read_yelp_data(filename):
@@ -68,7 +87,7 @@ class SentimentDataset:
             texts.append(text)
             labels.append(label)
 
-        return zip(text, labels)
+        return texts, labels
 
 
     @staticmethod
@@ -83,23 +102,5 @@ class SentimentDataset:
             texts.append(text)
             labels.append(label)
         
-        print(len(texts), texts[0], len(labels), set(labels))
+        return texts, labels
 
-        return zip(text, labels)
-
-    def prepare_dataloader_from_examples(self, examples, sampler=None):
-        dataset = list(self.convert_data_to_embeddings(examples))
-
-        sampler_func = sampler(dataset) if sampler is not None else None
-        dataloader = DataLoader(dataset, sampler=sampler_func, batch_size=BATCH_SIZE)
-
-        return dataloader
-
-    def prepare_dataloader(self, filename, sampler=None):
-        if self.dataset == 'imdb':
-            sentences_with_labels = self._read_imdb_data(filename)
-        elif self.dataset == "yelp":
-            sentences_with_labels = self._read_yelp_data(filename)
-        else:
-            sentences_with_labels = self._read_amazon_data(filename)
-        return self.prepare_dataloader_from_examples(sentences_with_labels, sampler=sampler)

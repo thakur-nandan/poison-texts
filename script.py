@@ -2,10 +2,9 @@ import os
 import argparse
 import logging
 
-from torch.utils.data import RandomSampler
 from transformers import BertConfig, BertForSequenceClassification, BertTokenizer
 
-from dataset import SentimentDataset
+from dataset import SentimentDataLoader
 from model import SentimentBERT
 from logger import LoggingHandler
 import pandas as pd
@@ -46,16 +45,14 @@ def train(dataset, train_file, epochs=20, output_dir="weights/"):
         model = BertForSequenceClassification.from_pretrained(BERT_MODEL, config=config)
 
         logging.info("Creating Sentiment Dataset using Tokenizer...")
-        dt = SentimentDataset(dataset, tokenizer)
-        dataloader = dt.prepare_dataloader(train_file, sampler=RandomSampler)
+        dataloader = SentimentDataLoader.prepare_dataloader(dataset, train_file, tokenizer)
         
         logging.info("Starting to train BERT model...")
         predictor.train(tokenizer, dataloader, model, epochs, output_dir)
     
     else:
         predictor.load(model_dir=output_dir)
-        dt = SentimentDataset(dataset, predictor.tokenizer)
-        dataloader = dt.prepare_dataloader(train_file, sampler=RandomSampler)
+        dataloader = SentimentDataLoader.prepare_dataloader(dataset, train_file, predictor.tokenizer)
         predictor.train(None, dataloader, None, epochs, output_dir, True)
 
     model.save_pretrained(output_dir)
@@ -66,8 +63,7 @@ def evaluate(dataset, test_file, model_dir="weights/"):
     predictor = SentimentBERT()
     predictor.load(model_dir=model_dir)
 
-    dt = SentimentDataset(dataset, predictor.tokenizer)
-    dataloader = dt.prepare_dataloader(test_file)
+    dataloader = SentimentDataLoader.prepare_dataloader(dataset, test_file, predictor.tokenizer)
     score = predictor.evaluate(dataloader)
     print(score)
 
@@ -76,8 +72,7 @@ def predict(dataset, text, model_dir="weights/"):
     predictor = SentimentBERT()
     predictor.load(model_dir=model_dir)
 
-    dt = SentimentDataset(dataset, predictor.tokenizer)
-    dataloader = dt.prepare_dataloader_from_examples([(text, -1)], sampler=None)   # text and a dummy label
+    dataloader = SentimentDataLoader.prepare_dataloader_from_example(text, predictor.tokenizer)
     result = predictor.predict(dataloader)
 
     return result[0]

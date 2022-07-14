@@ -43,13 +43,15 @@ class SentimentBERT:
         preds, trues = [], []
         self.model.eval()
         for batch in tqdm(dataloader, desc="Computing NER tags"):
-            batch = tuple(t.to(self.device) for t in batch)
+            b_input_ids = batch['input_ids'].to(self.device)
+            b_input_mask = batch['attention_mask'].to(self.device)
+            b_labels = batch['labels'].to(self.device)
 
             with torch.no_grad():
-                outputs = self.model(batch[0])
+                outputs = self.model(b_input_ids, token_type_ids=None, attention_mask=b_input_mask)
                 _, pred = torch.max(outputs[0], 1)
                 preds.extend(pred.cpu().detach().numpy())
-                trues.extend(batch[1].cpu().detach().numpy())
+                trues.extend(b_labels.cpu().detach().numpy())
 
         return preds, trues
 
@@ -89,8 +91,10 @@ class SentimentBERT:
             epoch_iterator = tqdm(dataloader, desc="Iteration")
             for step, batch in enumerate(epoch_iterator):
                 self.model.train()
-                batch = tuple(t.to(self.device) for t in batch)
-                outputs = self.model(batch[0], labels=batch[1])
+                b_input_ids = batch['input_ids'].to(self.device)
+                b_input_mask = batch['attention_mask'].to(self.device)
+                b_labels = batch['labels'].to(self.device)
+                outputs = self.model(b_input_ids, token_type_ids=None, attention_mask=b_input_mask, labels=b_labels)
                 loss = outputs[0]  # model outputs are always tuple in pytorch-transformers (see doc)
 
                 if GRADIENT_ACCUMULATION_STEPS > 1:

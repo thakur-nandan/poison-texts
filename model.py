@@ -6,6 +6,7 @@ from torch.nn import CrossEntropyLoss
 from tqdm import tqdm, trange
 from transformers import AdamW, get_linear_schedule_with_warmup
 from transformers import BertForSequenceClassification, BertTokenizer
+from transformers import AutoModelForSequenceClassification, AutoTokenizer
 
 PAD_TOKEN_LABEL_ID = CrossEntropyLoss().ignore_index
 
@@ -128,3 +129,9 @@ class SentimentBERT:
         self.tokenizer = BertTokenizer.from_pretrained(model_dir)
         self.model = BertForSequenceClassification.from_pretrained(model_dir)
         self.model.to(self.device)
+
+    def load_automodel(self, automodel):
+        self.tokenizer = AutoTokenizer.from_pretrained(automodel)
+        self.model = AutoModelForSequenceClassification.from_pretrained(automodel)
+        self.model.to(self.device)
+

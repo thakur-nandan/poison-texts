@@ -22,6 +22,7 @@ parser.add_argument('--use_pretrained', action="store_true", help="Train using p
 parser.add_argument('--epochs', default=10, type=int, help="Number of epochs to train")
 parser.add_argument('--evaluate', action="store_true", help="Evaluate existing weights")
 parser.add_argument('--predict', default="", type=str, help="Predict sentiment on a given sentence")
+parser.add_argument('--automodel', default="", type=str, help="Load published model from huggingface")
 parser.add_argument('--path', default='./weights', type=str, help="Weights path")
 parser.add_argument('--dataset', default='imdb', choices=["imdb", "yelp", "amazon"], type=str, help="imdb, yelp, amazon")
 parser.add_argument('--train_csv', type=str, help="Path to the training dataset csv")
@@ -61,7 +62,10 @@ def train(dataset, train_file, epochs=20, output_dir="weights/"):
 
 def evaluate(dataset, test_file, model_dir="weights/"):
     predictor = SentimentBERT()
-    predictor.load(model_dir=model_dir)
+    if args.automodel:
+        predictor.load_automodel(args.automodel)
+    else:
+        predictor.load(model_dir=model_dir)
 
     dataloader = SentimentDataLoader.prepare_dataloader(dataset, test_file, predictor.tokenizer)
     score = predictor.evaluate(dataloader)
@@ -70,7 +74,10 @@ def evaluate(dataset, test_file, model_dir="weights/"):
 
 def predict(dataset, text, model_dir="weights/"):
     predictor = SentimentBERT()
-    predictor.load(model_dir=model_dir)
+    if args.automodel:
+        predictor.load_automodel(args.automodel)
+    else:
+        predictor.load(model_dir=model_dir)
 
     dataloader = SentimentDataLoader.prepare_dataloader_from_example(text, predictor.tokenizer)
     result = predictor.predict(dataloader)

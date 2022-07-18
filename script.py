@@ -27,6 +27,7 @@ parser.add_argument('--path', default='./weights', type=str, help="Weights path"
 parser.add_argument('--dataset', default='imdb', choices=["imdb", "yelp", "amazon"], type=str, help="imdb, yelp, amazon")
 parser.add_argument('--train_csv', type=str, help="Path to the training dataset csv")
 parser.add_argument('--test_csv', type=str, help="Path to the test dataset csv")
+parser.add_argument('--dropout', type=str, default='0.1', help='Dropout of BERT model during training')
 args = parser.parse_args()
 
 
@@ -42,6 +43,8 @@ def train(dataset, train_file, epochs=20, output_dir="weights/"):
         
         logging.info("Initializing BERT Model...")
         config = BertConfig.from_pretrained(BERT_MODEL, num_labels=NUM_LABELS)
+        config.hidden_dropout_prob = float(args.dropout)
+        config.attention_probs_dropout_prob = float(args.dropout)
         tokenizer = BertTokenizer.from_pretrained(BERT_MODEL, do_lower_case=True)
         model = BertForSequenceClassification.from_pretrained(BERT_MODEL, config=config)
 
@@ -94,7 +97,6 @@ def relabel(filename, columns):
         df.to_csv(filename, header=False, index=False)
 
 if __name__ == '__main__':
-    output_path = args.path + "_" + args.dataset
 
     if args.dataset == "yelp":
         relabel(args.train_csv, ["label","text"])
@@ -104,13 +106,14 @@ if __name__ == '__main__':
         relabel(args.test_csv, ["label","title","text"])
 
     if args.train:
+        output_path = args.path + "_" + args.dataset
         os.makedirs(output_path, exist_ok=True)
         train(args.dataset, args.train_csv, epochs=args.epochs, output_dir=output_path)
 
     if args.evaluate:
-        evaluate(args.dataset, args.test_csv, model_dir=output_path)
+        evaluate(args.dataset, args.test_csv, model_dir=args.path)
 
     if len(args.predict) > 0:
-        print(predict(args.dataset, args.predict, model_dir=output_path))
+        print(predict(args.dataset, args.predict, model_dir=args.path))
 
     #print(predict("It was truly amazing experience.", model_dir=path))

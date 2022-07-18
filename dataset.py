@@ -68,12 +68,16 @@ class SentimentDataLoader:
 
     @staticmethod
     def _read_imdb_data(filename):
-        data = []
-        for line in open(filename, 'r', encoding="utf-8"):
-            data.append(SentimentDataLoader._parse_imdb_line(line))
+        reader = csv.reader(open(filename, encoding="utf-8"), quoting=csv.QUOTE_MINIMAL)
+        next(reader) # skip first line
+        texts, labels = [], []
+        num_lines = sum(1 for i in open(filename, 'rb'))
+        
+        for id, row in tqdm(enumerate(reader), total=num_lines):
+            texts.append(SentimentDataLoader._parse_imdb_line(row[0]))
+            labels.append(int(row[1]))
 
-        y = np.append(np.zeros(12500), np.ones(12500))
-        return data, y.tolist()
+        return texts, labels
 
     @staticmethod
     def _read_yelp_data(filename):

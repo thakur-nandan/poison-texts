@@ -43,12 +43,7 @@ class SentimentDataLoader:
     # Class wrapper for SentimentDataset
     @staticmethod
     def prepare_dataloader(dataset, filename, tokenizer):
-        if dataset == 'imdb':
-            sents, labels = SentimentDataLoader._read_imdb_data(filename)
-        elif dataset == "yelp":
-            sents, labels = SentimentDataLoader._read_yelp_data(filename)
-        else:
-            sents, labels = SentimentDataLoader._read_amazon_data(filename)
+        sents, labels = SentimentDataLoader._read_data(dataset, filename)
         ds = SentimentDataset(sents, labels, tokenizer)
         return DataLoader(ds, batch_size=BATCH_SIZE, shuffle=True)
 
@@ -56,6 +51,14 @@ class SentimentDataLoader:
     def prepare_dataloader_from_example(text, tokenizer):
         ds = SentimentDataset([text], [-1], tokenizer) # dummy label
         return DataLoader(ds, batch_size=BATCH_SIZE, shuffle=True)
+
+    @staticmethod
+    def _read_data(dataset, filename):
+        if dataset == 'imdb':
+            return SentimentDataLoader._read_imdb_data(filename)
+        elif dataset == "yelp":
+            return SentimentDataLoader._read_yelp_data(filename)
+        return SentimentDataLoader._read_amazon_data(filename)
 
     @staticmethod
     def _parse_imdb_line(line):
@@ -68,12 +71,16 @@ class SentimentDataLoader:
 
     @staticmethod
     def _read_imdb_data(filename):
-        data = []
-        for line in open(filename, 'r', encoding="utf-8"):
-            data.append(SentimentDataLoader._parse_imdb_line(line))
+        reader = csv.reader(open(filename, encoding="utf-8"), quoting=csv.QUOTE_MINIMAL)
+        next(reader) # skip first line
+        texts, labels = [], []
+        num_lines = sum(1 for i in open(filename, 'rb'))
+        
+        for id, row in tqdm(enumerate(reader), total=num_lines):
+            texts.append(SentimentDataLoader._parse_imdb_line(row[0]))
+            labels.append(int(row[1]))
 
-        y = np.append(np.zeros(12500), np.ones(12500))
-        return data, y.tolist()
+        return texts, labels
 
     @staticmethod
     def _read_yelp_data(filename):

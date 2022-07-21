@@ -6,6 +6,8 @@ import csv
 import torch
 from torch.utils.data import Dataset, DataLoader
 from tqdm.autonotebook import tqdm
+from ppl_defense import process_poisoned_data
+import random
 
 # The bigger, the better. Depends on your GPU capabilities.
 BATCH_SIZE = 16
@@ -13,10 +15,11 @@ MAX_SENTENCE_LENGTH = 350
 
 class SentimentDataset(Dataset):
 
-    def __init__(self, sents, labels, tokenizer):
+    def __init__(self, sents, labels, tokenizer, LM=None):
         self.tokenizer = tokenizer
         self.sents = sents
         self.labels = labels
+        self.LM = LM
 
     def __len__(self):
         return len(self.labels)
@@ -24,6 +27,8 @@ class SentimentDataset(Dataset):
     def __getitem__(self, idx):
         sent = self.sents[idx]
         label = self.labels[idx]
+        if self.LM:
+            sent = process_poisoned_data(sent, self.LM)
         encoding = self.tokenizer.encode_plus(sent,
                                               add_special_tokens=True,
                                               max_length=MAX_SENTENCE_LENGTH,
@@ -42,9 +47,9 @@ class SentimentDataset(Dataset):
 class SentimentDataLoader:
     # Class wrapper for SentimentDataset
     @staticmethod
-    def prepare_dataloader(dataset, filename, tokenizer):
+    def prepare_dataloader(dataset, filename, tokenizer, LM=None):
         sents, labels = SentimentDataLoader._read_data(dataset, filename)
-        ds = SentimentDataset(sents, labels, tokenizer)
+        ds = SentimentDataset(sents, labels, tokenizer, LM)
         return DataLoader(ds, batch_size=BATCH_SIZE, shuffle=True)
 
     @staticmethod
